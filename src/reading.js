@@ -60,9 +60,9 @@ function nodeContent(node: Node, children: PendingNode[],
   switch (node.type) {
     case FileType.File:
       return reader.add(node);
-    case FileType.Dir:
+    case FileType.Directory:
       return dirContent(children).then(x => StringIds.get(x));
-    case FileType.Link:
+    case FileType.Symlink:
       return readlink(node.path.get()).then(x => StringIds.get(x));
     default:
       return Promise.resolve(0);

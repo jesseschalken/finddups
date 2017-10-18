@@ -6,21 +6,21 @@ import {formatBytes, printLn} from './util';
 export class FileType {
   static create(stat: fs.Stats): FileType {
     if (stat.isFile()) return FileType.File;
-    if (stat.isDirectory()) return FileType.Dir;
-    if (stat.isSymbolicLink()) return FileType.Link;
-    if (stat.isBlockDevice()) return FileType.Block;
-    if (stat.isCharacterDevice()) return FileType.Char;
-    if (stat.isFIFO()) return FileType.Pipe;
+    if (stat.isDirectory()) return FileType.Directory;
+    if (stat.isSymbolicLink()) return FileType.Symlink;
+    if (stat.isBlockDevice()) return FileType.BlockDev;
+    if (stat.isCharacterDevice()) return FileType.CharDev;
+    if (stat.isFIFO()) return FileType.FIFO;
     if (stat.isSocket()) return FileType.Socket;
     return FileType.Unknown;
   }
 
   static File = new FileType('file');
-  static Dir = new FileType('dir');
-  static Link = new FileType('link');
-  static Block = new FileType('block');
-  static Char = new FileType('char');
-  static Pipe = new FileType('pipe');
+  static Directory = new FileType('dir');
+  static Symlink = new FileType('link');
+  static BlockDev = new FileType('block');
+  static CharDev = new FileType('char');
+  static FIFO = new FileType('pipe');
   static Socket = new FileType('socket');
   static Unknown = new FileType('unknown');
 
@@ -85,11 +85,12 @@ async function createNode(path: Path): Promise<Node> {
   let pathStr = path.get();
   await printLn(`Scanning ${pathStr}`);
   let stat = await lstat(pathStr);
+  let type = FileType.create(stat);
   return {
     path,
-    type: FileType.create(stat),
-    size: stat.isFile() ? stat.size : 0,
-    children: stat.isDirectory() ? await Promise.all((
+    type,
+    size: type === FileType.File ? stat.size : 0,
+    children: type === FileType.Directory ? await Promise.all((
         await readdir(pathStr)
     ).map(name => createNode(new Path(name, path)))) : [],
   };

@@ -64,9 +64,9 @@ function nodeContent(node, children, reader) {
   switch (node.type) {
     case _scanning.FileType.File:
       return reader.add(node);
-    case _scanning.FileType.Dir:
+    case _scanning.FileType.Directory:
       return dirContent(children).then(x => StringIds.get(x));
-    case _scanning.FileType.Link:
+    case _scanning.FileType.Symlink:
       return readlink(node.path.get()).then(x => StringIds.get(x));
     default:
       return Promise.resolve(0);

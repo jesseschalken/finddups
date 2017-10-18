@@ -19,11 +19,11 @@ function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj;
 class FileType {
   static create(stat) {
     if (stat.isFile()) return FileType.File;
-    if (stat.isDirectory()) return FileType.Dir;
-    if (stat.isSymbolicLink()) return FileType.Link;
-    if (stat.isBlockDevice()) return FileType.Block;
-    if (stat.isCharacterDevice()) return FileType.Char;
-    if (stat.isFIFO()) return FileType.Pipe;
+    if (stat.isDirectory()) return FileType.Directory;
+    if (stat.isSymbolicLink()) return FileType.Symlink;
+    if (stat.isBlockDevice()) return FileType.BlockDev;
+    if (stat.isCharacterDevice()) return FileType.CharDev;
+    if (stat.isFIFO()) return FileType.FIFO;
     if (stat.isSocket()) return FileType.Socket;
     return FileType.Unknown;
   }
@@ -40,11 +40,11 @@ exports.FileType = FileType; /**
                               */
 
 FileType.File = new FileType('file');
-FileType.Dir = new FileType('dir');
-FileType.Link = new FileType('link');
-FileType.Block = new FileType('block');
-FileType.Char = new FileType('char');
-FileType.Pipe = new FileType('pipe');
+FileType.Directory = new FileType('dir');
+FileType.Symlink = new FileType('link');
+FileType.BlockDev = new FileType('block');
+FileType.CharDev = new FileType('char');
+FileType.FIFO = new FileType('pipe');
 FileType.Socket = new FileType('socket');
 FileType.Unknown = new FileType('unknown');
 class Path {
@@ -91,11 +91,12 @@ async function createNode(path) {
   let pathStr = path.get();
   await (0, _util.printLn)(`Scanning ${pathStr}`);
   let stat = await lstat(pathStr);
+  let type = FileType.create(stat);
   return {
     path,
-    type: FileType.create(stat),
-    size: stat.isFile() ? stat.size : 0,
-    children: stat.isDirectory() ? await Promise.all((await readdir(pathStr)).map(name => createNode(new Path(name, path)))) : []
+    type,
+    size: type === FileType.File ? stat.size : 0,
+    children: type === FileType.Directory ? await Promise.all((await readdir(pathStr)).map(name => createNode(new Path(name, path)))) : []
   };
 }
 
