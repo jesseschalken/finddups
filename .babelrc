@@ -1,0 +1,9 @@
+{
+  "plugins": [
+    "syntax-class-properties",
+    "syntax-flow",
+    "transform-flow-strip-types",
+    "transform-es2015-modules-commonjs",
+    "transform-class-properties"
+  ]
+}
