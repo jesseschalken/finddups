@@ -34,55 +34,58 @@ function* traverse(node) {
   }
 }
 
-const StringIds = new class {
+class StringCids {
   constructor() {
-    this.next = 1;
     this.map = new Map();
   }
 
   // noinspection JSUnusedGlobalSymbols
   get(str) {
-    let id = this.map.get(str);
-    if (id === undefined) {
-      id = this.next++;
-      this.map.set(str, id);
+    let cid = this.map.get(str);
+    if (cid === undefined) {
+      cid = (0, _util.newCid)();
+      this.map.set(str, cid);
     }
-    return id;
+    return cid;
   }
-}();
+}
+
+const DirContentCids = new StringCids();
+const LinkContentCids = new StringCids();
 
 async function dirContent(nodes) {
   let data = '';
   for (let node of nodes) {
-    let { path, type, cid } = node;
-    let key = type.name + ' ' + (await cid);
-    data += (0, _util.padString)(key, 20) + ' ' + path.name + '\n';
+    let { path, cid } = node;
+    data += (0, _util.padString)((await cid) + '', 20) + ' ' + path.name + '\n';
   }
   return data;
 }
 
-function nodeContent(node, children, reader) {
+async function nodeContent(node, children, reader) {
   switch (node.type) {
     case _scanning.FileType.File:
       return reader.add(node);
     case _scanning.FileType.Directory:
-      return dirContent(children).then(x => StringIds.get(x));
+      return DirContentCids.get((await dirContent(children)));
     case _scanning.FileType.Symlink:
-      return readlink(node.path.get()).then(x => StringIds.get(x));
+      return LinkContentCids.get((await readlink(node.path.get())));
     default:
-      return Promise.resolve(0);
+      // For types other than file, directory or symlink, just use the cid
+      // attached to the file type.
+      return node.type.cid;
   }
 }
 
 function start(node, reader) {
-  let { path, size, type } = node;
+  let { path, type, size } = node;
   let children = node.children.map(node => start(node, reader));
   let cid = nodeContent(node, children, reader);
   return { path, size, children, type, cid };
 }
 
 async function finish(node) {
-  let { path, size, type } = node;
+  let { path, type, size } = node;
   let children = await Promise.all(node.children.map(finish));
   let cid = await node.cid;
   return { path, size, type, cid, children };

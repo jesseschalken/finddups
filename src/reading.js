@@ -4,7 +4,7 @@ import type {Node} from './scanning';
 import {FileReader} from './file-reader';
 import * as fs from 'fs';
 import {FileType} from './scanning';
-import {padString, printLn} from './util';
+import {padString, printLn, newCid} from './util';
 
 async function readlink(path: string): Promise<string> {
   let buffer = await new Promise((resolve, reject) => {
@@ -32,53 +32,56 @@ interface PendingNode extends Node {
   +children: $ReadOnlyArray<PendingNode>;
 }
 
-const StringIds = new class {
-  next = 1;
+class StringCids {
   map = new Map();
   // noinspection JSUnusedGlobalSymbols
   get(str: string): number {
-    let id = this.map.get(str);
-    if (id === undefined) {
-      id = this.next++;
-      this.map.set(str, id);
+    let cid = this.map.get(str);
+    if (cid === undefined) {
+      cid = newCid();
+      this.map.set(str, cid);
     }
-    return id;
+    return cid;
   }
-}();
+}
+
+const DirContentCids = new StringCids();
+const LinkContentCids = new StringCids();
 
 async function dirContent(nodes: $ReadOnlyArray<PendingNode>): Promise<string> {
   let data = '';
   for (let node of nodes) {
-    let {path, type, cid} = node;
-    let key = type.name + ' ' + (await cid);
-    data += padString(key, 20) + ' ' + path.name + '\n';
+    let {path, cid} = node;
+    data += padString((await cid) + '', 20) + ' ' + path.name + '\n';
   }
   return data;
 }
 
-function nodeContent(node: Node, children: PendingNode[],
-    reader: FileReader): Promise<number> {
+async function nodeContent(node: Node, children: PendingNode[],
+       reader: FileReader): Promise<number> {
   switch (node.type) {
     case FileType.File:
       return reader.add(node);
     case FileType.Directory:
-      return dirContent(children).then(x => StringIds.get(x));
+      return DirContentCids.get(await dirContent(children));
     case FileType.Symlink:
-      return readlink(node.path.get()).then(x => StringIds.get(x));
+      return LinkContentCids.get(await readlink(node.path.get()));
     default:
-      return Promise.resolve(0);
+      // For types other than file, directory or symlink, just use the cid
+      // attached to the file type.
+      return node.type.cid;
   }
 }
 
 function start(node: Node, reader: FileReader): PendingNode {
-  let {path, size, type} = node;
+  let {path, type, size} = node;
   let children = node.children.map(node => start(node, reader));
   let cid = nodeContent(node, children, reader);
   return {path, size, children, type, cid};
 }
 
 async function finish(node: PendingNode): Promise<CompleteNode> {
-  let {path, size, type} = node;
+  let {path, type, size} = node;
   let children = await Promise.all(node.children.map(finish));
   let cid = await node.cid;
   return {path, size, type, cid, children};

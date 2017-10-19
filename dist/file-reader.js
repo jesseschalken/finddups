@@ -35,9 +35,10 @@ class FileReader {
     // Group our files together
     let groups = await groupFiles(this.files);
     // And resolve the group number for each file based on the group its in
-    for (let i = 0; i < groups.length; i++) {
-      for (let file of groups[i]) {
-        file.resolve(i);
+    for (let group of groups) {
+      let cid = (0, _util.newCid)();
+      for (let file of group) {
+        file.resolve(cid);
       }
     }
   }
@@ -47,7 +48,7 @@ exports.FileReader = FileReader;
 async function groupFiles(files) {
   let groups1 = groupBySize(files);
   let progress = new _progress.Progress();
-  let interval = new _util.Interval(() => progress.print(), 1000);
+  let interval = new _util.Interval(() => progress.print(), 5000);
   let groups2 = [];
   await waitAll(groups1.map(async group => {
     if (group.length > 1) {

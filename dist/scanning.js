@@ -30,6 +30,7 @@ class FileType {
   }
 
   constructor(name) {
+    this.cid = (0, _util.newCid)();
     this.name = name;
   }
 }

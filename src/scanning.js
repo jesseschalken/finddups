@@ -1,7 +1,7 @@
 // @flow
 import * as fs from 'fs';
 import {sep as DIR_SEP} from 'path';
-import {formatBytes, printLn} from './util';
+import {formatBytes, printLn, newCid} from './util';
 
 export class FileType {
   static create(stat: fs.Stats): FileType {
@@ -25,7 +25,9 @@ export class FileType {
   static Unknown = new FileType('unknown');
 
   name: string;
+  cid: number;
   constructor(name: string) {
+    this.cid = newCid();
     this.name = name;
   }
 }

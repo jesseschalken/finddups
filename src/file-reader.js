@@ -3,7 +3,7 @@
 import {Path, Node} from './scanning';
 import * as fs from 'fs';
 import {Progress} from './progress';
-import {Interval} from './util';
+import {Interval, newCid} from './util';
 
 interface PendingPromise<T> {
   +resolve: T => void;
@@ -31,9 +31,10 @@ export class FileReader {
     // Group our files together
     let groups = await groupFiles(this.files);
     // And resolve the group number for each file based on the group its in
-    for (let i = 0; i < groups.length; i++) {
-      for (let file of groups[i]) {
-        file.resolve(i);
+    for (let group of groups) {
+      let cid = newCid();
+      for (let file of group) {
+        file.resolve(cid);
       }
     }
   }
@@ -42,7 +43,7 @@ export class FileReader {
 async function groupFiles(files: PendingFile[]): Promise<PendingFile[][]> {
   let groups1 = groupBySize(files);
   let progress = new Progress();
-  let interval = new Interval(() => progress.print(), 1000);
+  let interval = new Interval(() => progress.print(), 5000);
   let groups2 = [];
   await waitAll(groups1.map(async group => {
     if (group.length > 1) {

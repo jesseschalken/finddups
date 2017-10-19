@@ -16,7 +16,7 @@ function replaceLn(text) {
   return print(CLEAR + text);
 }
 
-function printLn(text) {
+function printLn(text = '') {
   return print(text + '\n');
 }
 
@@ -71,5 +71,8 @@ class Interval {
     clearInterval(this.id);
   }
 }
+
 exports.Interval = Interval;
+let nextCid = 1;
+const newCid = exports.newCid = () => nextCid++;
 //# sourceMappingURL=util.js.map

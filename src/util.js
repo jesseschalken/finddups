@@ -6,7 +6,7 @@ export function replaceLn(text: string): Promise<void> {
   return print(CLEAR + text);
 }
 
-export function printLn(text: string): Promise<void> {
+export function printLn(text: string = ''): Promise<void> {
   return print(text + '\n');
 }
 
@@ -22,7 +22,7 @@ export function formatBytes(n: number): string {
   const {floor, pow, max, abs, log} = Math;
   let i = floor(log(max(abs(n), 1)) / log(1000));
   return i === 0 ? n + ' B' :
-      formatNumber(n / pow(1000, i), 2) + ' ' + ' KMGTPEZY'[i] + 'B';
+         formatNumber(n / pow(1000, i), 2) + ' ' + ' KMGTPEZY'[i] + 'B';
 }
 
 function roundDown(number: number, precision: number): number {
@@ -31,7 +31,7 @@ function roundDown(number: number, precision: number): number {
 }
 
 export function formatNumber(n: number, decimals: number,
-    integers: number = 1): string {
+       integers: number = 1): string {
   n = roundDown(n, decimals);
   return n.toLocaleString(undefined, {
     minimumFractionDigits: decimals,
@@ -64,3 +64,6 @@ export class Interval {
     clearInterval(this.id);
   }
 }
+
+let nextCid = 1;
+export const newCid = () => nextCid++;
