@@ -2,6 +2,8 @@
 
 import {Path, Node} from './scanning';
 import * as fs from 'fs';
+import {Progress} from './progress';
+import {Interval} from './util';
 
 interface PendingPromise<T> {
   +resolve: T => void;
@@ -39,17 +41,22 @@ export class FileReader {
 
 async function groupFiles(files: PendingFile[]): Promise<PendingFile[][]> {
   let groups1 = groupBySize(files);
+  let progress = new Progress();
+  let interval = new Interval(() => progress.print(), 1000);
   let groups2 = [];
   await waitAll(groups1.map(async group => {
     if (group.length > 1) {
       for (let group2 of
-          await regroupRecursive(group.map(file => new OpenFile(file)))) {
+          await regroupRecursive(
+              group.map(file => new OpenFile(file, progress)))) {
         groups2.push(group2.map(file => file.file));
       }
     } else {
       groups2.push(group);
     }
   }));
+  interval.stop();
+  await progress.print();
   return groups2;
 }
 
@@ -58,10 +65,15 @@ class OpenFile {
   eof: boolean = false;
   fd: Promise<number>;
   file: PendingFile;
+  progress: Progress;
+  done: number = 0;
 
-  constructor(file: PendingFile) {
+  constructor(file: PendingFile, progress: Progress) {
+    progress.total += file.size;
+
     this.file = file;
     this.fd = openFd(file.path.get());
+    this.progress = progress;
   }
 
   /**
@@ -77,6 +89,11 @@ class OpenFile {
       this.eof = true;
       await this.close();
     }
+
+    // Update the progress bar
+    this.done += buffer.length;
+    this.progress.done += buffer.length;
+
     return buffer;
   }
 
@@ -86,6 +103,9 @@ class OpenFile {
     if (!this.closed) {
       this.closed = true;
       await closeFd(await this.fd);
+
+      // Remove any bytes we didn't read from the progress bar
+      this.progress.total -= (this.file.size - this.done);
     }
   }
 }

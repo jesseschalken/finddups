@@ -4,7 +4,7 @@ import type {Node} from './scanning';
 import {FileReader} from './file-reader';
 import * as fs from 'fs';
 import {FileType} from './scanning';
-import {pad} from './util';
+import {padString, printLn} from './util';
 
 async function readlink(path: string): Promise<string> {
   let buffer = await new Promise((resolve, reject) => {
@@ -50,7 +50,8 @@ async function dirContent(nodes: $ReadOnlyArray<PendingNode>): Promise<string> {
   let data = '';
   for (let node of nodes) {
     let {path, type, cid} = node;
-    data += pad(type.name + ' ' + (await cid), 20) + ' ' + path.name + '\n';
+    let key = type.name + ' ' + (await cid);
+    data += padString(key, 20) + ' ' + path.name + '\n';
   }
   return data;
 }
@@ -84,6 +85,7 @@ async function finish(node: PendingNode): Promise<CompleteNode> {
 }
 
 export async function read(nodes: Node[]): Promise<CompleteNode[]> {
+  await printLn('Reading file data');
   let reader = new FileReader();
   let started = nodes.map(node => start(node, reader));
   await reader.run();

@@ -11,6 +11,10 @@ var _fs = require('fs');
 
 var fs = _interopRequireWildcard(_fs);
 
+var _progress = require('./progress');
+
+var _util = require('./util');
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 class FileReader {
@@ -42,27 +46,35 @@ class FileReader {
 exports.FileReader = FileReader;
 async function groupFiles(files) {
   let groups1 = groupBySize(files);
+  let progress = new _progress.Progress();
+  let interval = new _util.Interval(() => progress.print(), 1000);
   let groups2 = [];
   await waitAll(groups1.map(async group => {
     if (group.length > 1) {
-      for (let group2 of await regroupRecursive(group.map(file => new OpenFile(file)))) {
+      for (let group2 of await regroupRecursive(group.map(file => new OpenFile(file, progress)))) {
         groups2.push(group2.map(file => file.file));
       }
     } else {
       groups2.push(group);
     }
   }));
+  interval.stop();
+  await progress.print();
   return groups2;
 }
 
 class OpenFile {
 
-  constructor(file) {
+  constructor(file, progress) {
     this.closed = false;
     this.eof = false;
+    this.done = 0;
+
+    progress.total += file.size;
 
     this.file = file;
     this.fd = openFd(file.path.get());
+    this.progress = progress;
   }
 
   /**
@@ -78,6 +90,11 @@ class OpenFile {
       this.eof = true;
       await this.close();
     }
+
+    // Update the progress bar
+    this.done += buffer.length;
+    this.progress.done += buffer.length;
+
     return buffer;
   }
 
@@ -87,6 +104,9 @@ class OpenFile {
     if (!this.closed) {
       this.closed = true;
       await closeFd((await this.fd));
+
+      // Remove any bytes we didn't read from the progress bar
+      this.progress.total -= this.file.size - this.done;
     }
   }
 }

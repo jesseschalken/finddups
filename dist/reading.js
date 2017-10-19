@@ -55,7 +55,8 @@ async function dirContent(nodes) {
   let data = '';
   for (let node of nodes) {
     let { path, type, cid } = node;
-    data += (0, _util.pad)(type.name + ' ' + (await cid), 20) + ' ' + path.name + '\n';
+    let key = type.name + ' ' + (await cid);
+    data += (0, _util.padString)(key, 20) + ' ' + path.name + '\n';
   }
   return data;
 }
@@ -88,6 +89,7 @@ async function finish(node) {
 }
 
 async function read(nodes) {
+  await (0, _util.printLn)('Reading file data');
   let reader = new _fileReader.FileReader();
   let started = nodes.map(node => start(node, reader));
   await reader.run();

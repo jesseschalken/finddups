@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.Path = exports.FileType = undefined;
+exports.traverse = traverse;
 exports.scan = scan;
 
 var _fs = require('fs');
@@ -62,8 +63,6 @@ class Path {
 }
 
 exports.Path = Path;
-
-
 function* traverse(node) {
   yield node;
   for (let child of node.children) {
@@ -89,7 +88,6 @@ function readdir(path) {
 
 async function createNode(path) {
   let pathStr = path.get();
-  await (0, _util.printLn)(`Scanning ${pathStr}`);
   let stat = await lstat(pathStr);
   let type = FileType.create(stat);
   return {
@@ -105,6 +103,7 @@ async function scan(paths) {
   let count = 0;
   let roots = [];
   for (let path of paths) {
+    await (0, _util.printLn)(`Scanning ${path.get()}`);
     let root = await createNode(path);
     for (let node of traverse(root)) {
       count++;

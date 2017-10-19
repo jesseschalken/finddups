@@ -58,7 +58,7 @@ export interface Node {
   +children: $ReadOnlyArray<Node>;
 }
 
-function* traverse(node: Node): Iterable<Node> {
+export function* traverse(node: Node): Iterable<Node> {
   yield node;
   for (let child of node.children) {
     yield* traverse(child);
@@ -83,7 +83,6 @@ function readdir(path: string): Promise<string[]> {
 
 async function createNode(path: Path): Promise<Node> {
   let pathStr = path.get();
-  await printLn(`Scanning ${pathStr}`);
   let stat = await lstat(pathStr);
   let type = FileType.create(stat);
   return {
@@ -101,6 +100,7 @@ export async function scan(paths: Path[]): Promise<Node[]> {
   let count = 0;
   let roots = [];
   for (let path of paths) {
+    await printLn(`Scanning ${path.get()}`);
     let root = await createNode(path);
     for (let node of traverse(root)) {
       count++;

@@ -11,8 +11,8 @@ async function main(argv) {
   let roots = await (0, _reading.read)((await (0, _scanning.scan)(paths)));
   for (let root of roots) {
     for (let node of (0, _reading.traverse)(root)) {
-      let { type, cid, path } = node;
-      await (0, _util.printLn)((0, _util.pad)(type.name + ' ' + cid, 20) + ' ' + path.get());
+      let { type, path, cid } = node;
+      await (0, _util.printLn)((0, _util.padString)(type.name + ' ' + cid, 20) + ' ' + path.get());
     }
   }
 }

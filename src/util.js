@@ -21,12 +21,46 @@ function print(text: string): Promise<void> {
 export function formatBytes(n: number): string {
   const {floor, pow, max, abs, log} = Math;
   let i = floor(log(max(abs(n), 1)) / log(1000));
-  if (i === 0) {
-    return n + ' B';
-  }
-  return (n / pow(1000, i)).toFixed(2) + ' ' + ' KMGTPEZY'[i] + 'B';
+  return i === 0 ? n + ' B' :
+      formatNumber(n / pow(1000, i), 2) + ' ' + ' KMGTPEZY'[i] + 'B';
 }
 
-export function pad(str: string, len: number): string {
+function roundDown(number: number, precision: number): number {
+  let factor = Math.pow(10, precision);
+  return Math.floor(number * factor) / factor;
+}
+
+export function formatNumber(n: number, decimals: number,
+    integers: number = 1): string {
+  n = roundDown(n, decimals);
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+    minimumIntegerDigits: integers,
+  });
+}
+
+export function padString(str: string, len: number): string {
   return str + ' '.repeat(Math.max(0, len - str.length));
+}
+
+/**
+ * Version of window.setInterval() that takes an async function instead of a
+ * regular function, and doesn't call it if the previous call hasn't finished.
+ */
+export class Interval {
+  id: number;
+  constructor(func: () => Promise<void>, delayMs: number) {
+    let running = false;
+    this.id = setInterval(async () => {
+      if (!running) {
+        running = true;
+        await func();
+        running = false;
+      }
+    }, delayMs);
+  }
+  stop(): void {
+    clearInterval(this.id);
+  }
 }
