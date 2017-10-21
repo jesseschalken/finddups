@@ -86,23 +86,21 @@ async function runReport(groups: CompleteNode[][]): Promise<void> {
     );
 
     let options = new Map();
-    let i = 1;
-    for (let {path} of group) {
-      options.set(i + '', {
+    for (let i = 0; i < group.length; i++) {
+      let {path} = group[i];
+      options.set((i + 1) + '', {
         name: `Keep only "${path.get()}"`,
         async action() {
-          let j = 1;
-          for (let {path: path2} of group) {
+          for (let j = 0; j < group.length; j++) {
+            let {path: path2} = group[i];
             if (i !== j) {
               await removeRecursive(path2.get());
             }
-            j++;
           }
           // Delete the group
           groups.splice(index, 1);
         },
       });
-      i++;
     }
     options.set('D', {
       name: 'Delete ALL',
