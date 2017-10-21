@@ -92,7 +92,7 @@ async function runReport(groups: CompleteNode[][]): Promise<void> {
         name: `Keep only "${path.get()}"`,
         async action() {
           for (let j = 0; j < group.length; j++) {
-            let {path: path2} = group[i];
+            let {path: path2} = group[j];
             if (i !== j) {
               await removeRecursive(path2.get());
             }
