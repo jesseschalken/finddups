@@ -1,6 +1,6 @@
 {
   "name": "finddups",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Find and interactively remove duplicate files and directories",
   "author": "Jesse Schalken <me@jesseschalken.com>",
   "license": "MIT",
@@ -15,6 +15,9 @@
     "prettier": "^1.7.4"
   },
   "main": "index.js",
+  "bin": {
+    "finddups": "./dist/main.js"
+  },
   "dependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
