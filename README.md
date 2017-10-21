@@ -8,6 +8,7 @@ Files automatically created by file managers and operating systems, such as `.DS
 
 1. Install [Node.js](https://nodejs.org/) version 8.7 or greater.
 2. Install the package via `npm`:
+
    ```
    $ npm install -g finddups
    ```
