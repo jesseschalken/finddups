@@ -15,14 +15,14 @@ export class FileType {
     return FileType.Unknown;
   }
 
-  static File = new FileType('file');
-  static Directory = new FileType('dir');
-  static Symlink = new FileType('link');
-  static BlockDev = new FileType('block');
-  static CharDev = new FileType('char');
-  static FIFO = new FileType('pipe');
-  static Socket = new FileType('socket');
-  static Unknown = new FileType('unknown');
+  static File: FileType = new FileType('file');
+  static Directory: FileType = new FileType('dir');
+  static Symlink: FileType = new FileType('link');
+  static BlockDev: FileType = new FileType('block');
+  static CharDev: FileType = new FileType('char');
+  static FIFO: FileType = new FileType('pipe');
+  static Socket: FileType = new FileType('socket');
+  static Unknown: FileType = new FileType('unknown');
 
   name: string;
   cid: number;

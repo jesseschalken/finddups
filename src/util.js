@@ -12,7 +12,7 @@ export function printLn(text: string = ''): Promise<void> {
 
 function print(text: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    process.stdout.write(text, err => {
+    process.stdout.write(text, (err: mixed) => {
       err ? reject(err) : resolve();
     });
   });
@@ -48,6 +48,7 @@ export function padString(str: string, len: number): string {
   return str + ' '.repeat(Math.max(0, len - str.length));
 }
 
+// noinspection JSUnusedGlobalSymbols
 export function waitIO(): Promise<void> {
   return new Promise(resolve => {
     setImmediate(resolve);

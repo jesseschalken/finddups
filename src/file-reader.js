@@ -94,7 +94,7 @@ async function groupFiles(files: PendingFile[]): Promise<PendingFile[][]> {
 }
 
 class FileStream {
-  static OpenFilesCounter = new AsyncCap(MAX_OPEN_FILES);
+  static OpenFilesCounter: AsyncCap = new AsyncCap(MAX_OPEN_FILES);
 
   static async open(
     file: PendingFile,
