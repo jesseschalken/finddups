@@ -57,12 +57,16 @@ export function stat(path: string): Promise<Stats> {
   });
 }
 
-export function readdir(path: string): Promise<string[]> {
-  return new Promise((resolve, reject) => {
+export async function readdir(path: string): Promise<string[]> {
+  const names = await new Promise((resolve, reject) => {
     fs.readdir(path, (err, names) => {
       err ? reject(err) : resolve(names);
     });
   });
+  // Googling gives mixed results about whether fs.readdir() sorts and
+  // whether it sorts on all platforms. Just sort it ourselves to be sure.
+  names.sort((a, b) => (a === b ? 0 : a > b ? 1 : -1));
+  return names;
 }
 
 export function rmdir(path: string): Promise<void> {
