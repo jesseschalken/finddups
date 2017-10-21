@@ -2,18 +2,9 @@
 
 import type {Node} from './scanning';
 import {FileReader} from './file-reader';
-import * as fs from 'fs';
+import * as fs from './promise_fs';
 import {FileType} from './scanning';
 import {padString, printLn, newCid} from './util';
-
-async function readlink(path: string): Promise<string> {
-  let buffer = await new Promise((resolve, reject) => {
-    fs.readlink(path, (err, buffer) => {
-      err ? reject(err) : resolve(buffer);
-    });
-  });
-  return buffer instanceof Buffer ? buffer.toString() : buffer;
-}
 
 export interface CompleteNode extends Node {
   +cid: number;
@@ -68,7 +59,7 @@ async function nodeContent(
     case FileType.Directory:
       return DirContentCids.get(await dirContent(children));
     case FileType.Symlink:
-      return LinkContentCids.get(await readlink(node.path.get()));
+      return LinkContentCids.get(await fs.readlink(node.path.get()));
     default:
       // For types other than file, directory or symlink, just use the cid
       // attached to the file type.

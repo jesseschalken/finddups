@@ -4,7 +4,7 @@ import type {CompleteNode} from './reading';
 import {traverse} from './reading';
 import {formatBytes, printLn} from './util';
 import * as readline from 'readline';
-import * as fs from 'fs';
+import * as fs from './promise_fs';
 import {sep as DIR_SEP} from 'path';
 
 export async function report(roots: CompleteNode[]): Promise<void> {
@@ -181,32 +181,15 @@ class Readline {
 }
 
 async function removeRecursive(path: string): Promise<void> {
-  let stat = await new Promise((resolve, reject) => {
-    fs.lstat(path, (err, stat) => {
-      err ? reject(err) : resolve(stat);
-    });
-  });
+  let stat = await fs.lstat(path);
   if (stat.isDirectory()) {
-    let names = await new Promise((resolve, reject) => {
-      fs.readdir(path, (err, names) => {
-        err ? reject(err) : resolve(names);
-      });
-    });
-    for (let name of names) {
+    for (let name of await fs.readdir(path)) {
       await removeRecursive(path + DIR_SEP + name);
     }
     await printLn('rmdir ' + path);
-    await new Promise((resolve, reject) => {
-      fs.rmdir(path, err => {
-        err ? reject(err) : resolve();
-      });
-    });
+    await fs.rmdir(path);
   } else {
     await printLn('unlink ' + path);
-    await new Promise((resolve, reject) => {
-      fs.unlink(path, err => {
-        err ? reject(err) : resolve();
-      });
-    });
+    await fs.unlink(path);
   }
 }

@@ -1,7 +1,7 @@
 // @flow
 
 import {Path, Node} from './scanning';
-import * as fs from 'fs';
+import * as fs from './promise_fs';
 import {Progress} from './progress';
 import {
   AsyncCap,
@@ -103,11 +103,7 @@ class FileStream {
     await FileStream.OpenFilesCounter.inc();
 
     let self = new FileStream();
-    self.fd = await new Promise((resolve, reject) => {
-      fs.open(file.path.get(), 'r', (err, fd) => {
-        err ? reject(err) : resolve(fd);
-      });
-    });
+    self.fd = await fs.open(file.path.get(), 'r');
     self.progress = progress;
     self.file = file;
     return self;
@@ -128,35 +124,25 @@ class FileStream {
     // Don't bother allocating a buffer bigger than the remainder of the file
     length = Math.min(length, this.file.size - this.done);
 
-    let buffer = Buffer.allocUnsafe(length);
-    let bytesRead = await new Promise((resolve, reject) => {
-      // noinspection JSIgnoredPromiseFromCall
-      fs.read(this.fd, buffer, 0, length, null, (err, bytesRead) => {
-        err ? reject(err) : resolve(bytesRead);
-      });
-    });
+    let buffer = await fs.read(this.fd, length);
 
-    if (bytesRead === 0) {
-      this.eof = bytesRead === 0;
+    if (buffer.length === 0) {
+      this.eof = true;
       // Might as well close the file handle off as soon as possible to free
       // up the open file handle count.
       await this.close();
     }
-    this.done += bytesRead;
-    this.progress.done += bytesRead;
+    this.done += buffer.length;
+    this.progress.done += buffer.length;
 
-    return buffer.slice(0, bytesRead);
+    return buffer;
   }
 
   // noinspection JSUnusedGlobalSymbols
   async close(): Promise<void> {
     if (!this.closed) {
       this.closed = true;
-      await new Promise((resolve, reject) => {
-        fs.close(this.fd, err => {
-          err ? reject(err) : resolve();
-        });
-      });
+      await fs.close(this.fd);
 
       // Remove any bytes we didn't read from the progress bar
       this.progress.total -= this.file.size - this.done;

@@ -1,5 +1,5 @@
 // @flow
-import * as fs from 'fs';
+import * as fs from './promise_fs';
 import {sep as DIR_SEP} from 'path';
 import {formatBytes, printLn, newCid} from './util';
 
@@ -68,24 +68,8 @@ export function* traverse(node: Node): Iterable<Node> {
   }
 }
 
-function lstat(path: Path): Promise<fs.Stats> {
-  return new Promise((resolve, reject) => {
-    fs.lstat(path.get(), (err, stat) => {
-      err ? reject(err) : resolve(stat);
-    });
-  });
-}
-
-function readdir(path: Path): Promise<string[]> {
-  return new Promise((resolve, reject) => {
-    fs.readdir(path.get(), (err, names) => {
-      err ? reject(err) : resolve(names);
-    });
-  });
-}
-
 async function createNode(path: Path): Promise<Node> {
-  let stat = await lstat(path);
+  let stat = await fs.lstat(path.get());
   let type = FileType.create(stat);
   return {
     path,
@@ -94,7 +78,9 @@ async function createNode(path: Path): Promise<Node> {
     children:
       type === FileType.Directory
         ? await Promise.all(
-            (await readdir(path)).map(name => createNode(new Path(name, path))),
+            (await fs.readdir(path.get())).map(name =>
+              createNode(new Path(name, path)),
+            ),
           )
         : [],
   };
