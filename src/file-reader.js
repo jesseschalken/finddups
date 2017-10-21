@@ -45,9 +45,38 @@ export class FileReader {
   }
 }
 
+/**
+ * This is the number of bytes used by a single regrouping step. The size of
+ * the chunk read from each file in a group is REGROUP_SIZE_BYTES divided by
+ * the number of files in the group.
+ *
+ * The higher this is set, the fewer regrouping steps will be required to
+ * finish a duplicate group and the fewer times the disk will have to switch
+ * contexts between files, but the more memory the whole process will use.
+ */
 const REGROUP_SIZE_BYTES = 10 * 1024 * 1024;
-const MAX_CONCURRENT_REGROUPS = 10;
+
+/**
+ * Doing regrouping steps concurrently helps keep the disk saturated with
+ * IO requests and minimises the amount of time the disk spends idly waiting
+ * for the next read request, but the more concurrent jobs are running the
+ * more the disk has to switch contexts between files.
+ */
+const MAX_CONCURRENT_REGROUPS = 2;
+
+/**
+ * Set this low enough that the user isn't sitting in front of their screen
+ * wondering if the program has frozen but high enough that it won't blow
+ * away all of their terminal scrollback.
+ */
 const PRINT_PROGRESS_DELAY_MS = 10000;
+
+/**
+ * Set this lower than the maximum number of open files imposed by the
+ * operating system, but higher than the number of files that might share
+ * the same file size (since they will have to all be open at once to
+ * regroup them).
+ */
 const MAX_OPEN_FILES = 2000;
 
 async function groupFiles(files: PendingFile[]): Promise<PendingFile[][]> {
