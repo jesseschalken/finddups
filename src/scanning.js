@@ -48,6 +48,7 @@ export class Path {
     let {name, parent} = this;
     return parent ? parent.join(name) : name;
   }
+  // noinspection JSUnusedGlobalSymbols
   join(name: string): string {
     return this.get() + DIR_SEP + name;
   }
@@ -67,33 +68,35 @@ export function* traverse(node: Node): Iterable<Node> {
   }
 }
 
-function lstat(path: string): Promise<fs.Stats> {
+function lstat(path: Path): Promise<fs.Stats> {
   return new Promise((resolve, reject) => {
-    fs.lstat(path, (err, stat) => {
+    fs.lstat(path.get(), (err, stat) => {
       err ? reject(err) : resolve(stat);
     });
   });
 }
 
-function readdir(path: string): Promise<string[]> {
+function readdir(path: Path): Promise<string[]> {
   return new Promise((resolve, reject) => {
-    fs.readdir(path, (err, names) => {
+    fs.readdir(path.get(), (err, names) => {
       err ? reject(err) : resolve(names);
     });
   });
 }
 
 async function createNode(path: Path): Promise<Node> {
-  let pathStr = path.get();
-  let stat = await lstat(pathStr);
+  let stat = await lstat(path);
   let type = FileType.create(stat);
   return {
     path,
     type,
     size: type === FileType.File ? stat.size : 0,
-    children: type === FileType.Directory ? await Promise.all((
-        await readdir(pathStr)
-    ).map(name => createNode(new Path(name, path)))) : [],
+    children:
+      type === FileType.Directory
+        ? await Promise.all(
+            (await readdir(path)).map(name => createNode(new Path(name, path))),
+          )
+        : [],
   };
 }
 

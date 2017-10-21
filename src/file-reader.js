@@ -3,12 +3,16 @@
 import {Path, Node} from './scanning';
 import * as fs from 'fs';
 import {Progress} from './progress';
-import {Interval, newCid} from './util';
-
-interface PendingPromise<T> {
-  +resolve: T => void;
-  +reject: mixed => void;
-}
+import {
+  AsyncCap,
+  newCid,
+  printLn,
+  shuffle,
+  sum,
+  trackProgress,
+  waitAll,
+} from './util';
+import type {PendingPromise} from './util';
 
 interface PendingFile extends PendingPromise<number> {
   +path: Path;
@@ -18,6 +22,7 @@ interface PendingFile extends PendingPromise<number> {
 export class FileReader {
   files: PendingFile[] = [];
 
+  // noinspection JSUnusedGlobalSymbols
   add(file: Node): Promise<number> {
     // `new Promise(cb)` executes `cb` synchronously, so once this method
     // finishes we know the file has been added to `this.files`.
@@ -40,170 +45,156 @@ export class FileReader {
   }
 }
 
+const REGROUP_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_CONCURRENT_REGROUPS = 100;
+const PRINT_PROGRESS_DELAY_MS = 1000;
+const MAX_OPEN_FILES = 2000;
+
 async function groupFiles(files: PendingFile[]): Promise<PendingFile[][]> {
-  let groups1 = groupBySize(files);
+  await printLn('Grouping files by size');
+  const groups = groupBySize(files);
+
+  // Small files are much slower to read than big files, so shuffle the list
+  // so that they are roughly evenly distributed and our time estimates are
+  // more likely to be correct.
+  await printLn('Shuffling groups');
+  shuffle(groups);
+
+  await printLn('Reading file data of potential duplicates');
   let progress = new Progress();
-  let interval = new Interval(() => progress.print(), 5000);
+  let counter = new AsyncCap(MAX_CONCURRENT_REGROUPS);
   let groups2 = [];
-  await waitAll(groups1.map(async group => {
-    if (group.length > 1) {
-      for (let group2 of
-          await regroupRecursive(
-              group.map(file => new OpenFile(file, progress)))) {
-        groups2.push(group2.map(file => file.file));
-      }
-    } else {
-      groups2.push(group);
-    }
-  }));
-  interval.stop();
-  await progress.print();
+  await trackProgress(
+    () =>
+      waitAll(
+        groups.map(async group => {
+          if (group.length > 1) {
+            progress.total += sum(group, file => file.size);
+            await counter.inc();
+            // Open all the files in the group
+            let streams = await Promise.all(
+              group.map(file => FileStream.open(file, progress)),
+            );
+            // Progressively read the files to regroup them
+            for (let group of await regroupRecursive(streams)) {
+              groups2.push(group.map(stream => stream.file));
+            }
+            // Close all the files
+            await waitAll(streams.map(stream => stream.close()));
+            counter.dec();
+          } else {
+            groups2.push(group);
+          }
+        }),
+      ),
+    () => progress.print(),
+    PRINT_PROGRESS_DELAY_MS,
+  );
   return groups2;
 }
 
-class OpenFile {
+class FileStream {
+  static OpenFilesCounter = new AsyncCap(MAX_OPEN_FILES);
+
+  static async open(
+    file: PendingFile,
+    progress: Progress,
+  ): Promise<FileStream> {
+    await FileStream.OpenFilesCounter.inc();
+
+    let self = new FileStream();
+    self.fd = await new Promise((resolve, reject) => {
+      fs.open(file.path.get(), 'r', (err, fd) => {
+        err ? reject(err) : resolve(fd);
+      });
+    });
+    self.progress = progress;
+    self.file = file;
+    return self;
+  }
+
   closed: boolean = false;
   eof: boolean = false;
-  fd: Promise<number>;
+  fd: number;
   file: PendingFile;
   progress: Progress;
   done: number = 0;
-
-  constructor(file: PendingFile, progress: Progress) {
-    progress.total += file.size;
-
-    this.file = file;
-    this.fd = openFd(file.path.get());
-    this.progress = progress;
-  }
 
   /**
    * Returns exactly the next `length` bytes, or fewer if end-of-file is
    * reached.
    */
   async read(length: number): Promise<Buffer> {
-    if (this.closed || length === 0) {
-      return Buffer.alloc(0);
-    }
-    let buffer = await readFd(await this.fd, length);
-    if (buffer.length === 0) {
-      this.eof = true;
+    // Don't bother allocating a buffer bigger than the remainder of the file
+    length = Math.min(length, this.file.size - this.done);
+
+    let buffer = Buffer.allocUnsafe(length);
+    let bytesRead = await new Promise((resolve, reject) => {
+      // noinspection JSIgnoredPromiseFromCall
+      fs.read(this.fd, buffer, 0, length, null, (err, bytesRead) => {
+        err ? reject(err) : resolve(bytesRead);
+      });
+    });
+
+    if (bytesRead === 0) {
+      this.eof = bytesRead === 0;
+      // Might as well close the file handle off as soon as possible to free
+      // up the open file handle count.
       await this.close();
     }
+    this.done += bytesRead;
+    this.progress.done += bytesRead;
 
-    // Update the progress bar
-    this.done += buffer.length;
-    this.progress.done += buffer.length;
-
-    return buffer;
+    return buffer.slice(0, bytesRead);
   }
 
+  // noinspection JSUnusedGlobalSymbols
   async close(): Promise<void> {
-    // Gate to make sure only the first call to close() will close the file
-    // handle.
     if (!this.closed) {
       this.closed = true;
-      await closeFd(await this.fd);
+      await new Promise((resolve, reject) => {
+        fs.close(this.fd, err => {
+          err ? reject(err) : resolve();
+        });
+      });
 
       // Remove any bytes we didn't read from the progress bar
-      this.progress.total -= (this.file.size - this.done);
+      this.progress.total -= this.file.size - this.done;
+
+      FileStream.OpenFilesCounter.dec();
     }
   }
 }
 
-const fdCounter = new class {
-  count: number = 0;
-  queue: PendingPromise<void>[] = [];
-  // noinspection JSUnusedGlobalSymbols
-  inc(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.queue.push({resolve, reject});
-      this.run();
-    });
-  }
-  // noinspection JSUnusedGlobalSymbols
-  dec(): void {
-    this.count--;
-    this.run();
-  }
-  run(): void {
-    while (this.queue.length > 0 && this.count < 1000) {
-      this.count++;
-      this.queue.shift().resolve();
+async function regroup(files: FileStream[]): Promise<FileStream[][]> {
+  let groups = [];
+  function getGroup(bytes) {
+    for (let group of groups) {
+      if (group.bytes.equals(bytes)) {
+        return group;
+      }
     }
+    let group = {bytes, files: []};
+    groups.push(group);
+    return group;
   }
-}();
-
-async function openFd(path: string): Promise<number> {
-  // Make sure there are less than 1000 open file descriptors before opening
-  // more of them.
-  await fdCounter.inc();
-  return new Promise((resolve, reject) => {
-    fs.open(path, 'r', (err, fd) => {
-      err ? reject(err) : resolve(fd);
-    });
-  });
-}
-
-async function readFd(fd: number, length: number): Promise<Buffer> {
-  let buffer = Buffer.allocUnsafe(length);
-  let bytesRead = await new Promise((resolve, reject) => {
-    // noinspection JSIgnoredPromiseFromCall
-    fs.read(fd, buffer, 0, length, null, (err, bytesRead) => {
-      err ? reject(err) : resolve(bytesRead);
-    });
-  });
-  if (bytesRead < length) {
-    buffer = buffer.slice(0, bytesRead);
-  }
-  return buffer;
-}
-
-function closeFd(fd: number): Promise<void> {
-  fdCounter.dec();
-  return new Promise((resolve, reject) => {
-    fs.close(fd, err => {
-      err ? reject(err) : resolve();
-    });
-  });
-}
-
-/** Promise.all but without building an array of return values */
-async function waitAll(promises: Iterable<Promise<void>>): Promise<void> {
-  for (let promise of promises) {
-    await promise;
-  }
-}
-
-type Group = {+bytes: Buffer, +files: OpenFile[]};
-
-function findGroup(groups: Group[], bytes: Buffer): Group {
-  for (let group of groups) {
-    if (group.bytes.equals(bytes)) {
-      return group;
-    }
-  }
-  let group = {bytes, files: []};
-  groups.push(group);
-  return group;
-}
-
-const CHUNK_SIZE = 10 * 1024 * 1024;
-
-async function regroup(files: OpenFile[]): Promise<OpenFile[][]> {
-  let groups: Group[] = [];
-  // For each file, in parallel, read the next CHUNK_SIZE bytes and add the
-  // file to the group for those bytes
-  await waitAll(files.map(async file => {
-    let bytes = await file.read(CHUNK_SIZE);
-    let group = findGroup(groups, bytes);
-    group.files.push(file);
-  }));
+  // Divide the regroup size by the number of files we have, otherwise we
+  // could exhaust our memory just by having a large enough number of files.
+  const readSize = Math.ceil(REGROUP_SIZE_BYTES / files.length);
+  // For each file, in parallel, read the next readSize bytes and add
+  // the file to the group for those bytes
+  await waitAll(
+    files.map(async file => {
+      let bytes = await file.read(readSize);
+      let group = getGroup(bytes);
+      group.files.push(file);
+    }),
+  );
   // Return the files from each group
   return groups.map(group => group.files);
 }
 
-async function regroupRecursive(files: OpenFile[]): Promise<OpenFile[][]> {
+async function regroupRecursive(files: FileStream[]): Promise<FileStream[][]> {
   if (files.length === 0) {
     // Not sure why we were given an empty group but whatever
     return [];
@@ -223,13 +214,16 @@ async function regroupRecursive(files: OpenFile[]): Promise<OpenFile[][]> {
       // Tail call so our stack doesn't grow forever
       return regroupRecursive(groups[0]);
     } else {
-      let ret = [];
-      await waitAll(groups.map(async files => {
+      let groups2 = [];
+      // It is important that we don't do the regrouping here in parallel,
+      // otherwise the disk read requests will ping pong between different
+      // groups which isn't nice on the disk cache.
+      for (let files of groups) {
         for (let group of await regroupRecursive(files)) {
-          ret.push(group);
+          groups2.push(group);
         }
-      }));
-      return ret;
+      }
+      return groups2;
     }
   }
 }
@@ -239,10 +233,10 @@ function groupBySize(files: PendingFile[]): PendingFile[][] {
   for (let file of files) {
     let list = map.get(file.size);
     if (list === undefined) {
-      list = [];
-      map.set(file.size, list);
+      map.set(file.size, [file]);
+    } else {
+      list.push(file);
     }
-    list.push(file);
   }
   return Array.from(map.values());
 }

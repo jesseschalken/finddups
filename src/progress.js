@@ -24,10 +24,11 @@ export class Progress {
   start: number = 0;
   total: number = 0;
   done: number = 0;
-  running: bool = false;
+  running: boolean = false;
   delay: number = 1000;
 
-  constructor() {
+  constructor(total: number = 0) {
+    this.total = total;
     this.start = Date.now();
   }
 
@@ -37,13 +38,13 @@ export class Progress {
 
   format(): string {
     let {done, total, start} = this;
-    let tPassed = Date.now() - start;
-    let rate = formatRate(done / tPassed);
+    let passed = Date.now() - start;
+    let rate = formatRate(done / passed);
     let percent = formatPercent(done / total);
     // The ETA is the milliseconds per byte so far (passed / done) multiplied
     // by the number of bytes remaining (total - done)
-    let eta = formatTime((total - done) * (tPassed / done));
+    let eta = formatTime((total - done) * (passed / done));
 
-    return `${percent}, ${rate}, ETA ${eta}`;
+    return `${percent} of ${formatBytes(total)}, ${rate}, ETA ${eta}`;
   }
 }

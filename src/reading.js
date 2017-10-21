@@ -57,8 +57,11 @@ async function dirContent(nodes: $ReadOnlyArray<PendingNode>): Promise<string> {
   return data;
 }
 
-async function nodeContent(node: Node, children: PendingNode[],
-       reader: FileReader): Promise<number> {
+async function nodeContent(
+  node: Node,
+  children: PendingNode[],
+  reader: FileReader,
+): Promise<number> {
   switch (node.type) {
     case FileType.File:
       return reader.add(node);

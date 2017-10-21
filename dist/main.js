@@ -1,7 +1,5 @@
 'use strict';
 
-var _util = require('./util');
-
 var _scanning = require('./scanning');
 
 var _reading = require('./reading');
@@ -12,9 +10,9 @@ async function main(argv) {
   let paths = argv.slice(2).map(path => new _scanning.Path(path));
   let roots = await (0, _reading.read)((await (0, _scanning.scan)(paths)));
   await (0, _reporting.report)(roots);
-  await (0, _util.printLn)('DONE');
 }
 
-/* noinspection JSIgnoredPromiseFromCall*/
+// noinspection JSIgnoredPromiseFromCall
+
 main(process.argv);
-//# sourceMappingURL=main.js.map
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uL3NyYy9tYWluLmpzIl0sIm5hbWVzIjpbIm1haW4iLCJhcmd2IiwicGF0aHMiLCJzbGljZSIsIm1hcCIsInBhdGgiLCJyb290cyIsInByb2Nlc3MiXSwibWFwcGluZ3MiOiI7O0FBQ0E7O0FBQ0E7O0FBQ0E7O0FBRUEsZUFBZUEsSUFBZixDQUFvQkMsSUFBcEIsRUFBbUQ7QUFDakQsTUFBSUMsUUFBUUQsS0FBS0UsS0FBTCxDQUFXLENBQVgsRUFBY0MsR0FBZCxDQUFrQkMsUUFBUSxtQkFBU0EsSUFBVCxDQUExQixDQUFaO0FBQ0EsTUFBSUMsUUFBUSxNQUFNLG9CQUFLLE1BQU0sb0JBQUtKLEtBQUwsQ0FBWCxFQUFsQjtBQUNBLFFBQU0sdUJBQU9JLEtBQVAsQ0FBTjtBQUNEOztBQUVEOztBQUNBTixLQUFLTyxRQUFRTixJQUFiIiwiZmlsZSI6Im1haW4uanMiLCJzb3VyY2VzQ29udGVudCI6WyIvLyBAZmxvd1xuaW1wb3J0IHtQYXRoLCBzY2FufSBmcm9tICcuL3NjYW5uaW5nJztcbmltcG9ydCB7cmVhZH0gZnJvbSAnLi9yZWFkaW5nJztcbmltcG9ydCB7cmVwb3J0fSBmcm9tICcuL3JlcG9ydGluZyc7XG5cbmFzeW5jIGZ1bmN0aW9uIG1haW4oYXJndjogc3RyaW5nW10pOiBQcm9taXNlPHZvaWQ+IHtcbiAgbGV0IHBhdGhzID0gYXJndi5zbGljZSgyKS5tYXAocGF0aCA9PiBuZXcgUGF0aChwYXRoKSk7XG4gIGxldCByb290cyA9IGF3YWl0IHJlYWQoYXdhaXQgc2NhbihwYXRocykpO1xuICBhd2FpdCByZXBvcnQocm9vdHMpO1xufVxuXG4vLyBub2luc3BlY3Rpb24gSlNJZ25vcmVkUHJvbWlzZUZyb21DYWxsXG5tYWluKHByb2Nlc3MuYXJndik7XG4iXX0=
