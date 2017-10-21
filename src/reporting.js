@@ -88,7 +88,7 @@ async function runReport(groups: CompleteNode[][]): Promise<void> {
     let options = new Map();
     for (let i = 0; i < group.length; i++) {
       let {path} = group[i];
-      options.set((i + 1) + '', {
+      options.set(`${i + 1}`, {
         name: `Keep only "${path.get()}"`,
         async action() {
           for (let j = 0; j < group.length; j++) {
@@ -133,6 +133,7 @@ async function runReport(groups: CompleteNode[][]): Promise<void> {
     await rl.choose(options);
   }
   rl.close();
+  await printLn();
   if (quit) {
     await printLn('Quit');
   } else {
