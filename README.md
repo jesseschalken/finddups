@@ -15,7 +15,7 @@ Files automatically created by file managers and operating systems, such as `.DS
 
 ### Usage
 
-Run it and pass it one or more directories to scan for duplicates. Once finished, it will present a list with the biggest duplicate sets first. You can step through the list with `n` and `p`, action the current duplicate set with `1`,`2`,`3`..etc and `D`, or quit with `q`.
+Run it and pass it one or more directories or directories to scan for duplicates. Once finished, it will present a list with the biggest duplicate sets first. You can step through the list with `n` and `p`, action the current duplicate set with `1`,`2`,`3`..etc and `D`, or quit with `q`.
 
 Example:
 
