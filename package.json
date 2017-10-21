@@ -2,10 +2,7 @@
   "name": "finddups",
   "version": "1.0.0",
   "description": "Find and interactively remove duplicate files and directories",
-  "author": {
-    "name": "Jesse Schalken",
-    "email": "me@jesseschalken.com"
-  },
+  "author": "Jesse Schalken <me@jesseschalken.com>",
   "license": "MIT",
   "devDependencies": {
     "babel-cli": "^6.26.0",
@@ -16,5 +13,18 @@
     "babel-plugin-transform-flow-strip-types": "^6.22.0",
     "flow-bin": "^0.57.3",
     "prettier": "^1.7.4"
-  }
+  },
+  "main": "index.js",
+  "dependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jesseschalken/finddups.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jesseschalken/finddups/issues"
+  },
+  "homepage": "https://github.com/jesseschalken/finddups#readme"
 }
