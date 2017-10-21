@@ -1,7 +1,7 @@
 // @flow
 import * as fs from './promise_fs';
 import {sep as DIR_SEP} from 'path';
-import {formatBytes, printLn, newCid} from './util';
+import {formatBytes, printLn, newCid, formatNumber} from './util';
 
 export class FileType {
   static create(stat: fs.Stats): FileType {
@@ -99,6 +99,6 @@ export async function scan(paths: Path[]): Promise<Node[]> {
     }
     roots.push(root);
   }
-  await printLn(`Found ${count} files, ${formatBytes(size)}`);
+  await printLn(`Found ${formatNumber(count, 0)} files, ${formatBytes(size)}`);
   return roots;
 }

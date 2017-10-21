@@ -33,7 +33,7 @@ function roundDown(number: number, precision: number): number {
 
 export function formatNumber(
   n: number,
-  decimals: number,
+  decimals: number = 0,
   integers: number = 1,
 ): string {
   n = roundDown(n, decimals);
@@ -113,6 +113,12 @@ export interface PendingPromise<T> {
   +reject: mixed => void;
 }
 
+/**
+ * This class is to cap the number of asynchronous jobs entering some code
+ * block or using some resource. Construct it with the maximum number of
+ * concurrent jobs as a parameter, and use <tt>await counter.inc();</tt> to
+ * occupy a slot and <tt>counter.dec();</tt> to return it.
+ */
 export class AsyncCap {
   count: number = 0;
   queue: PendingPromise<void>[] = [];

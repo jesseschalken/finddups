@@ -46,18 +46,16 @@ export class FileReader {
 }
 
 const REGROUP_SIZE_BYTES = 10 * 1024 * 1024;
-const MAX_CONCURRENT_REGROUPS = 100;
-const PRINT_PROGRESS_DELAY_MS = 1000;
+const MAX_CONCURRENT_REGROUPS = 10;
+const PRINT_PROGRESS_DELAY_MS = 10000;
 const MAX_OPEN_FILES = 2000;
 
 async function groupFiles(files: PendingFile[]): Promise<PendingFile[][]> {
-  await printLn('Grouping files by size');
   const groups = groupBySize(files);
 
   // Small files are much slower to read than big files, so shuffle the list
   // so that they are roughly evenly distributed and our time estimates are
   // more likely to be correct.
-  await printLn('Shuffling groups');
   shuffle(groups);
 
   await printLn('Reading file data of potential duplicates');
@@ -165,7 +163,8 @@ async function regroup(files: FileStream[]): Promise<FileStream[][]> {
     return group;
   }
   // Divide the regroup size by the number of files we have, otherwise we
-  // could exhaust our memory just by having a large enough number of files.
+  // could exhaust our memory just by having a large enough number of in our
+  // group.
   const readSize = Math.ceil(REGROUP_SIZE_BYTES / files.length);
   // For each file, in parallel, read the next readSize bytes and add
   // the file to the group for those bytes

@@ -4,7 +4,7 @@ import type {Node} from './scanning';
 import {FileReader} from './file-reader';
 import * as fs from './promise_fs';
 import {FileType} from './scanning';
-import {padString, printLn, newCid} from './util';
+import {padString, newCid} from './util';
 
 export interface CompleteNode extends Node {
   +cid: number;
@@ -82,7 +82,6 @@ async function finish(node: PendingNode): Promise<CompleteNode> {
 }
 
 export async function read(nodes: Node[]): Promise<CompleteNode[]> {
-  await printLn('Reading file data');
   let reader = new FileReader();
   let started = nodes.map(node => start(node, reader));
   await reader.run();

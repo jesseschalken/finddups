@@ -2,14 +2,17 @@
 
 import type {CompleteNode} from './reading';
 import {traverse} from './reading';
-import {formatBytes, printLn} from './util';
+import {formatBytes, formatNumber, printLn, sum} from './util';
 import * as readline from 'readline';
 import * as fs from './promise_fs';
 import {sep as DIR_SEP} from 'path';
 
 export async function report(roots: CompleteNode[]): Promise<void> {
   let groups = gatherDuplicates(roots);
-
+  let count = formatNumber(groups.length);
+  let bytes = formatBytes(sum(groups, group => amountDuplicated(group)));
+  await printLn();
+  await printLn(`Found ${count} duplicate sets, ${bytes} duplicated`);
   await runReport(groups);
 }
 
