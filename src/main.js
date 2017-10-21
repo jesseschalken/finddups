@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // @flow
 import {Path, scan} from './scanning';
 import {read} from './reading';

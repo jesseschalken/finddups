@@ -1,6 +1,6 @@
 {
   "name": "finddups",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Find and interactively remove duplicate files and directories",
   "author": "Jesse Schalken <me@jesseschalken.com>",
   "license": "MIT",
