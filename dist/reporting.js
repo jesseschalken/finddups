@@ -84,7 +84,7 @@ function gatherDuplicates(roots) {
 }
 
 async function runReport(groups) {
-  groups = groups.sort((a, b) => amountDuplicated(b) - amountDuplicated(a));
+  groups.sort((a, b) => amountDuplicated(b) - amountDuplicated(a));
 
   let rl = new Readline();
   let index = 0;

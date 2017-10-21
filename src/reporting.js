@@ -70,7 +70,7 @@ function gatherDuplicates(roots: CompleteNode[]): CompleteNode[][] {
 }
 
 async function runReport(groups: CompleteNode[][]): Promise<void> {
-  groups = groups.sort((a, b) => amountDuplicated(b) - amountDuplicated(a));
+  groups.sort((a, b) => amountDuplicated(b) - amountDuplicated(a));
 
   let rl = new Readline();
   let index = 0;
