@@ -167,17 +167,7 @@ class FileStream {
 
 FileStream.OpenFilesCounter = new _util.AsyncCap(MAX_OPEN_FILES);
 async function regroup(files) {
-  let groups = [];
-  function getGroup(bytes) {
-    for (let group of groups) {
-      if (group.bytes.equals(bytes)) {
-        return group;
-      }
-    }
-    let group = { bytes, files: [] };
-    groups.push(group);
-    return group;
-  }
+  const groups = [];
   // Divide the regroup size by the number of files we have, otherwise we
   // could exhaust our memory just by having a large enough number of in our
   // group.
@@ -186,8 +176,13 @@ async function regroup(files) {
   // the file to the group for those bytes
   await (0, _util.waitAll)(files.map(async file => {
     let bytes = await file.read(readSize);
-    let group = getGroup(bytes);
-    group.files.push(file);
+    for (let group of groups) {
+      if (group.bytes.equals(bytes)) {
+        group.files.push(file);
+        return;
+      }
+    }
+    groups.push({ bytes, files: [file] });
   }));
   // Return the files from each group
   return groups.map(group => group.files);

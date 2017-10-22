@@ -180,17 +180,7 @@ class FileStream {
 }
 
 async function regroup(files: FileStream[]): Promise<FileStream[][]> {
-  let groups = [];
-  function getGroup(bytes) {
-    for (let group of groups) {
-      if (group.bytes.equals(bytes)) {
-        return group;
-      }
-    }
-    let group = {bytes, files: []};
-    groups.push(group);
-    return group;
-  }
+  const groups = [];
   // Divide the regroup size by the number of files we have, otherwise we
   // could exhaust our memory just by having a large enough number of in our
   // group.
@@ -200,8 +190,13 @@ async function regroup(files: FileStream[]): Promise<FileStream[][]> {
   await waitAll(
     files.map(async file => {
       let bytes = await file.read(readSize);
-      let group = getGroup(bytes);
-      group.files.push(file);
+      for (let group of groups) {
+        if (group.bytes.equals(bytes)) {
+          group.files.push(file);
+          return;
+        }
+      }
+      groups.push({bytes, files: [file]});
     }),
   );
   // Return the files from each group
