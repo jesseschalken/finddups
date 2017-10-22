@@ -58,14 +58,6 @@ exports.FileReader = FileReader; /**
 const REGROUP_SIZE_BYTES = 10 * 1024 * 1024;
 
 /**
- * Doing regrouping steps concurrently helps keep the disk saturated with
- * IO requests and minimises the amount of time the disk spends idly waiting
- * for the next read request, but the more concurrent jobs are running the
- * more the disk has to switch contexts between files.
- */
-const MAX_CONCURRENT_REGROUPS = 2;
-
-/**
  * Set this low enough that the user isn't sitting in front of their screen
  * wondering if the program has frozen but high enough that it won't blow
  * away all of their terminal scrollback.
@@ -90,12 +82,18 @@ async function groupFiles(files) {
 
   await (0, _util.printLn)('Reading file data of potential duplicates');
   let progress = new _progress.Progress();
-  let counter = new _util.AsyncCap(MAX_CONCURRENT_REGROUPS);
   let groups2 = [];
-  await (0, _util.trackProgress)(() => (0, _util.waitAll)(groups.map(async group => {
+  let todo = [];
+  for (let group of groups) {
     if (group.length > 1) {
       progress.total += (0, _util.sum)(group, file => file.size);
-      await counter.inc();
+      todo.push(group);
+    } else {
+      groups2.push(group);
+    }
+  }
+  await (0, _util.trackProgress)(async () => {
+    for (let group of todo) {
       // Open all the files in the group
       let streams = await Promise.all(group.map(file => FileStream.open(file, progress)));
       // Progressively read the files to regroup them
@@ -104,11 +102,8 @@ async function groupFiles(files) {
       }
       // Close all the files
       await (0, _util.waitAll)(streams.map(stream => stream.close()));
-      counter.dec();
-    } else {
-      groups2.push(group);
     }
-  })), () => progress.print(), PRINT_PROGRESS_DELAY_MS);
+  }, () => progress.print(), PRINT_PROGRESS_DELAY_MS);
   return groups2;
 }
 
