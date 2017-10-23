@@ -1,8 +1,15 @@
-`finddups` is a command line tool to find and remove duplicate files and directory trees for Windows, macOS and Linux. It aims to be as efficient as possible, only reading as much of each file as required to determine if it is unique.
+`finddups` is a command line tool to find and remove duplicate files and 
+directory trees for Windows, macOS and Linux. It aims to be as efficient as 
+possible, only reading as much of each file as required to determine if it is
+ unique.
 
-It considers only the contents of files and directories and the destination of symbolic links to determine duplicates. Filesystem metadata such as permissions, ACLs, MAC times and xattrs are ignored.
+It considers only the contents of files and directories and the destination 
+of symbolic links to determine duplicates. Filesystem metadata such as 
+permissions, ACLs, MAC times and xattrs are ignored.
 
-Files automatically created by file managers and operating systems, such as `.DS_Store`, `Thumbs.db` or `._*` files are counted when determining uniqueness of directories. It is recommended to remove these files before running `finddups`.
+Files automatically created by file managers and operating systems, such as 
+`.DS_Store`, `Thumbs.db` or `._*` files are *ignored* when determining 
+uniqueness of directories.
 
 ### Installation
 
@@ -15,7 +22,10 @@ Files automatically created by file managers and operating systems, such as `.DS
 
 ### Usage
 
-Run it and pass it one or more files or directories to scan for duplicates. Once finished, it will present a list with the biggest duplicate sets first. You can step through the list with `n` and `p`, action the current duplicate set with `1`,`2`,`3`..etc and `D`, or quit with `q`.
+Run it and pass it one or more files or directories to scan for duplicates. 
+Once finished, it will present a list with the biggest duplicate sets first. 
+You can step through the list with `n` and `p`, action the current duplicate
+set with `1`,`2`,`3`..etc and `D`, or quit with `q`.
 
 Example:
 
@@ -48,4 +58,8 @@ Please select an option:
 
 ### Development
 
-`finddups` is a Node.js project using [Babel](https://babeljs.io/), [Flow](https://flow.org/) and [Prettier](https://prettier.io/) and has no runtime dependencies. Sources are in `src/` and are compiled into `dist/` with `babel src --out-dir dist --source-maps`. The main entry point is `dist/main.js`.
+`finddups` is a Node.js project using [Babel](https://babeljs.io/),
+[Flow](https://flow.org/) and [Prettier](https://prettier.io/) and has no 
+runtime dependencies. Sources are in `src/` and are compiled into `dist/` 
+with `babel src --out-dir dist --source-maps`. The main entry point is 
+`dist/main.js`.

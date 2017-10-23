@@ -71,19 +71,23 @@ export function* traverse(node: Node): Iterable<Node> {
 async function createNode(path: Path): Promise<Node> {
   let stat = await fs.lstat(path.get());
   let type = FileType.create(stat);
-  return {
-    path,
-    type,
-    size: type === FileType.File ? stat.size : 0,
-    children:
-      type === FileType.Directory
-        ? await Promise.all(
-            (await fs.readdir(path.get())).map(name =>
-              createNode(new Path(name, path)),
-            ),
-          )
-        : [],
-  };
+  let children;
+  let size = type === FileType.File ? stat.size : 0;
+  if (type === FileType.Directory) {
+    children = await Promise.all(
+      (await fs.readdir(path.get()))
+        .filter(
+          name =>
+            name !== 'Thumbs.db' &&
+            name !== '.DS_Store' &&
+            name.slice(0, 2) !== '._',
+        )
+        .map(name => createNode(new Path(name, path))),
+    );
+  } else {
+    children = [];
+  }
+  return {path, type, size, children};
 }
 
 export async function scan(paths: Path[]): Promise<Node[]> {
