@@ -30,7 +30,6 @@ function open(path, mode) {
 async function read(fd, length) {
   let buffer = Buffer.allocUnsafe(length);
   let bytesRead = await new Promise((resolve, reject) => {
-    // noinspection JSIgnoredPromiseFromCall
     fs.read(fd, buffer, 0, length, null, (err, bytesRead) => {
       err ? reject(err) : resolve(bytesRead);
     });

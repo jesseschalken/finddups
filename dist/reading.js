@@ -3,7 +3,6 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.traverse = traverse;
 exports.read = read;
 
 var _fileReader = require('./file-reader');
@@ -18,19 +17,11 @@ var _util = require('./util');
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
-function* traverse(node) {
-  yield node;
-  for (let child of node.children) {
-    yield* traverse(child);
-  }
-}
-
 class StringCids {
   constructor() {
     this.map = new Map();
   }
 
-  // noinspection JSUnusedGlobalSymbols
   get(str) {
     let cid = this.map.get(str);
     if (cid === undefined) {
@@ -44,48 +35,45 @@ class StringCids {
 const DirContentCids = new StringCids();
 const LinkContentCids = new StringCids();
 
-async function dirContent(nodes) {
+function dirContent(nodes) {
   let data = '';
   for (let node of nodes) {
     let { path, cid } = node;
-    data += (0, _util.padString)((await cid) + '', 20) + ' ' + path.name + '\n';
+    data += (0, _util.padString)(cid + '', 20) + ' ' + path.name + '\n';
   }
   return data;
 }
 
-async function nodeContent(node, children, reader) {
-  switch (node.type) {
-    case _scanning.FileType.File:
-      return reader.add(node);
-    case _scanning.FileType.Directory:
-      return DirContentCids.get((await dirContent(children)));
-    case _scanning.FileType.Symlink:
-      return LinkContentCids.get((await fs.readlink(node.path.get())));
-    default:
-      // For types other than file, directory or symlink, just use the cid
-      // attached to the file type.
-      return node.type.cid;
-  }
-}
-
-function start(node, reader) {
-  let { path, type, size } = node;
-  let children = node.children.map(node => start(node, reader));
-  let cid = nodeContent(node, children, reader);
-  return { path, size, children, type, cid };
-}
-
-async function finish(node) {
-  let { path, type, size } = node;
-  let children = await Promise.all(node.children.map(finish));
-  let cid = await node.cid;
-  return { path, size, type, cid, children };
-}
-
 async function read(nodes) {
   let reader = new _fileReader.FileReader();
-  let started = nodes.map(node => start(node, reader));
+
+  async function nodeContent(node, children) {
+    switch (node.type) {
+      case _scanning.FileType.File:
+        return reader.add(node);
+      case _scanning.FileType.Directory:
+        return DirContentCids.get(dirContent((await children)));
+      case _scanning.FileType.Symlink:
+        return LinkContentCids.get((await fs.readlink(node.path.get())));
+      default:
+        // For types other than file, directory or symlink, just use the cid
+        // attached to the file type.
+        return node.type.cid;
+    }
+  }
+
+  async function readNode(node) {
+    let { path, type, size } = node;
+    // The FileReader needs all files to be added to it before being started,
+    // which is what nodeContent() does, so it is important that we don't await
+    // on our children until nodeContent() has been called.
+    let children = Promise.all(node.children.map(readNode));
+    let cid = await nodeContent(node, children);
+    return { path, size, children: await children, type, cid };
+  }
+
+  let done = Promise.all(nodes.map(readNode));
   await reader.run();
-  return await Promise.all(started.map(finish));
+  return await done;
 }
 //# sourceMappingURL=reading.js.map

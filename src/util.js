@@ -85,6 +85,24 @@ export function newCid(): number {
   return nextCid++;
 }
 
+// noinspection JSUnusedGlobalSymbols
+export function groupBy<Tk, Tv>(
+  items: Iterable<Tv>,
+  fn: Tv => Tk,
+): Map<Tk, Tv[]> {
+  let map = new Map();
+  for (let item of items) {
+    let key = fn(item);
+    let arr = map.get(key);
+    if (arr === undefined) {
+      map.set(key, [item]);
+    } else {
+      arr.push(item);
+    }
+  }
+  return map;
+}
+
 /** Shuffle an array in place */
 export function shuffle<T>(a: T[]): void {
   let n = a.length;
@@ -126,12 +144,14 @@ export class AsyncCap {
   constructor(max: number) {
     this.max = max;
   }
+  // noinspection JSUnusedGlobalSymbols
   inc(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.queue.push({resolve, reject});
       this.run();
     });
   }
+  // noinspection JSUnusedGlobalSymbols
   dec(): void {
     this.count--;
     this.run();

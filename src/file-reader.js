@@ -6,6 +6,7 @@ import {Progress} from './progress';
 import {
   AsyncCap,
   newCid,
+  partition,
   printLn,
   shuffle,
   sum,
@@ -22,7 +23,6 @@ interface PendingFile extends PendingPromise<number> {
 export class FileReader {
   files: PendingFile[] = [];
 
-  // noinspection JSUnusedGlobalSymbols
   add(file: Node): Promise<number> {
     // `new Promise(cb)` executes `cb` synchronously, so once this method
     // finishes we know the file has been added to `this.files`.
@@ -72,25 +72,18 @@ const PRINT_PROGRESS_DELAY_MS = 10000;
 const MAX_OPEN_FILES = 2000;
 
 async function groupFiles(files: PendingFile[]): Promise<PendingFile[][]> {
-  const groups = groupBySize(files);
+  let groups = groupBySize(files);
 
+  await printLn('Reading file data of potential duplicates');
+
+  let [todo, done] = partition(groups, group => group.length > 1);
+  let progress = new Progress(
+    sum(todo, group => sum(group, file => file.size)),
+  );
   // Small files are much slower to read than big files, so shuffle the list
   // so that they are roughly evenly distributed and our time estimates are
   // more likely to be correct.
-  shuffle(groups);
-
-  await printLn('Reading file data of potential duplicates');
-  let progress = new Progress();
-  let groups2 = [];
-  let todo = [];
-  for (let group of groups) {
-    if (group.length > 1) {
-      progress.total += sum(group, file => file.size);
-      todo.push(group);
-    } else {
-      groups2.push(group);
-    }
-  }
+  shuffle(todo);
   await trackProgress(
     async () => {
       for (let group of todo) {
@@ -100,7 +93,7 @@ async function groupFiles(files: PendingFile[]): Promise<PendingFile[][]> {
         );
         // Progressively read the files to regroup them
         for (let group of await regroupRecursive(streams)) {
-          groups2.push(group.map(stream => stream.file));
+          done.push(group.map(stream => stream.file));
         }
         // Close all the files
         await waitAll(streams.map(stream => stream.close()));
@@ -109,7 +102,7 @@ async function groupFiles(files: PendingFile[]): Promise<PendingFile[][]> {
     () => progress.print(),
     PRINT_PROGRESS_DELAY_MS,
   );
-  return groups2;
+  return done;
 }
 
 class FileStream {
@@ -157,7 +150,6 @@ class FileStream {
     return buffer;
   }
 
-  // noinspection JSUnusedGlobalSymbols
   async close(): Promise<void> {
     if (!this.closed) {
       this.closed = true;

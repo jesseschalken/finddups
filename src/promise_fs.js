@@ -15,7 +15,6 @@ export function open(path: string, mode: string): Promise<number> {
 export async function read(fd: number, length: number): Promise<Buffer> {
   let buffer = Buffer.allocUnsafe(length);
   let bytesRead = await new Promise((resolve, reject) => {
-    // noinspection JSIgnoredPromiseFromCall
     fs.read(fd, buffer, 0, length, null, (err, bytesRead) => {
       err ? reject(err) : resolve(bytesRead);
     });

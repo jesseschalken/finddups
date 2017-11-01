@@ -39,8 +39,8 @@ export class FileType {
  */
 export class Path {
   name: string;
-  parent: ?Path;
-  constructor(name: string, parent?: Path) {
+  parent: Path | null;
+  constructor(name: string, parent: Path | null = null) {
     this.name = name;
     this.parent = parent;
   }
@@ -48,7 +48,6 @@ export class Path {
     let {name, parent} = this;
     return parent ? parent.join(name) : name;
   }
-  // noinspection JSUnusedGlobalSymbols
   join(name: string): string {
     return this.get() + DIR_SEP + name;
   }
@@ -61,28 +60,16 @@ export interface Node {
   +children: $ReadOnlyArray<Node>;
 }
 
-export function* traverse(node: Node): Iterable<Node> {
-  yield node;
-  for (let child of node.children) {
-    yield* traverse(child);
-  }
-}
-
 async function createNode(path: Path): Promise<Node> {
   let stat = await fs.lstat(path.get());
   let type = FileType.create(stat);
-  let children;
   let size = type === FileType.File ? stat.size : 0;
+  let children;
   if (type === FileType.Directory) {
     children = await Promise.all(
-      (await fs.readdir(path.get()))
-        .filter(
-          name =>
-            name !== 'Thumbs.db' &&
-            name !== '.DS_Store' &&
-            name.slice(0, 2) !== '._',
-        )
-        .map(name => createNode(new Path(name, path))),
+      (await fs.readdir(path.get())).map(name =>
+        createNode(new Path(name, path)),
+      ),
     );
   } else {
     children = [];
@@ -94,13 +81,15 @@ export async function scan(paths: Path[]): Promise<Node[]> {
   let size = 0;
   let count = 0;
   let roots = [];
+  function visit(node) {
+    count++;
+    size += node.size;
+    node.children.forEach(visit);
+  }
   for (let path of paths) {
     await printLn(`Scanning ${path.get()}`);
     let root = await createNode(path);
-    for (let node of traverse(root)) {
-      count++;
-      size += node.size;
-    }
+    visit(root);
     roots.push(root);
   }
   await printLn(`Found ${formatNumber(count, 0)} files, ${formatBytes(size)}`);

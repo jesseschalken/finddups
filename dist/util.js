@@ -12,6 +12,7 @@ exports.waitIO = waitIO;
 exports.delay = delay;
 exports.trackProgress = trackProgress;
 exports.newCid = newCid;
+exports.groupBy = groupBy;
 exports.shuffle = shuffle;
 exports.waitAll = waitAll;
 exports.partition = partition;
@@ -93,6 +94,21 @@ function newCid() {
   return nextCid++;
 }
 
+// noinspection JSUnusedGlobalSymbols
+function groupBy(items, fn) {
+  let map = new Map();
+  for (let item of items) {
+    let key = fn(item);
+    let arr = map.get(key);
+    if (arr === undefined) {
+      map.set(key, [item]);
+    } else {
+      arr.push(item);
+    }
+  }
+  return map;
+}
+
 /** Shuffle an array in place */
 function shuffle(a) {
   let n = a.length;
@@ -127,12 +143,14 @@ class AsyncCap {
 
     this.max = max;
   }
+  // noinspection JSUnusedGlobalSymbols
   inc() {
     return new Promise((resolve, reject) => {
       this.queue.push({ resolve, reject });
       this.run();
     });
   }
+  // noinspection JSUnusedGlobalSymbols
   dec() {
     this.count--;
     this.run();

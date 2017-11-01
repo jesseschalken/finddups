@@ -5,8 +5,6 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.report = report;
 
-var _reading = require('./reading');
-
 var _util = require('./util');
 
 var _readline = require('readline');
@@ -17,7 +15,7 @@ var _promise_fs = require('./promise_fs');
 
 var fs = _interopRequireWildcard(_promise_fs);
 
-var _path = require('path');
+var _scanning = require('./scanning');
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
@@ -36,9 +34,9 @@ function amountDuplicated(nodes) {
 }
 
 function deepSize(node) {
-  let size = 0;
-  for (let node2 of (0, _reading.traverse)(node)) {
-    size += node2.size;
+  let { size } = node;
+  for (let node2 of node.children) {
+    size += deepSize(node2);
   }
   return size;
 }
@@ -46,40 +44,33 @@ function deepSize(node) {
 function getDuplicateCids(roots) {
   let one = new Set();
   let many = new Set();
-  for (let root of roots) {
-    for (let node of (0, _reading.traverse)(root)) {
-      let { cid } = node;
-      if (one.has(cid)) {
-        many.add(cid);
-      } else {
-        one.add(cid);
-      }
+  roots.forEach(function visit({ cid, children }) {
+    if (one.has(cid)) {
+      many.add(cid);
+    } else {
+      one.add(cid);
     }
-  }
+    children.forEach(visit);
+  });
   return many;
 }
 
 function gatherDuplicates(roots) {
   let dups = getDuplicateCids(roots);
   let map = new Map();
-  function add(node) {
+  roots.forEach(function visit(node) {
     let { cid } = node;
     if (!dups.has(cid)) {
-      for (let child of node.children) {
-        add(child);
-      }
+      node.children.forEach(visit);
     } else {
       let list = map.get(cid);
       if (list === undefined) {
-        list = [];
-        map.set(cid, list);
+        map.set(cid, [node]);
+      } else {
+        list.push(node);
       }
-      list.push(node);
     }
-  }
-  for (let root of roots) {
-    add(root);
-  }
+  });
   return Array.from(map.values()).filter(x => x.length > 1);
 }
 
@@ -99,52 +90,49 @@ async function runReport(groups) {
     await (0, _util.printLn)();
     await (0, _util.printLn)(`${index + 1}/${groups.length}: ${info} (${count} copies, ${bytes} duplicated)`);
 
-    let options = new Map();
-    for (let i = 0; i < group.length; i++) {
-      let { path } = group[i];
-      options.set(`${i + 1}`, {
-        name: `Keep only "${path.get()}"`,
-        async action() {
-          for (let j = 0; j < group.length; j++) {
-            let { path: path2 } = group[j];
-            if (i !== j) {
-              await removeRecursive(path2.get());
-            }
-          }
-          // Delete the group
-          groups.splice(index, 1);
-        }
-      });
-    }
-    options.set('D', {
-      name: 'Delete ALL',
+    await rl.choose(group.map(({ path }, i) => ({
+      key: `${i + 1}`,
+      name: `Keep only "${path.get()}"`,
       async action() {
-        for (let { path } of group) {
-          await removeRecursive(path.get());
+        let j = 0;
+        for (let node of group) {
+          if (i !== j) {
+            await removeRecursive(node);
+          }
+          j++;
         }
         // Delete the group
         groups.splice(index, 1);
       }
-    });
-    options.set('n', {
+    })).concat([{
+      key: 'D',
+      name: 'Delete ALL',
+      async action() {
+        for (let node of group) {
+          await removeRecursive(node);
+        }
+        // Delete the group
+        groups.splice(index, 1);
+      }
+    }, {
+      key: 'n',
       name: 'Next duplicate',
       async action() {
         index++;
       }
-    });
-    options.set('p', {
+    }, {
+      key: 'p',
       name: 'Previous duplicate',
       async action() {
         index--;
       }
-    });
-    options.set('q', {
+    }, {
+      key: 'q',
       name: 'Quit',
       async action() {
         quit = true;
       }
-    });
-    await rl.choose(options);
+    }]));
   }
   rl.close();
   await (0, _util.printLn)();
@@ -168,7 +156,7 @@ class Readline {
   async choose(options) {
     while (true) {
       let question = 'Please select an option:\n';
-      for (let [key, { name }] of options) {
+      for (let { key, name } of options) {
         question += `  ${key}: ${name}\n`;
       }
       question += '> ';
@@ -178,21 +166,27 @@ class Readline {
         });
       });
       response = response.trim();
-      let option = options.get(response);
-      if (option !== undefined) {
-        await option.action();
-        return;
+      for (let { key, action } of options) {
+        if (key === response) {
+          await action();
+          return;
+        }
       }
     }
   }
 }
 
-async function removeRecursive(path) {
-  let stat = await fs.lstat(path);
-  if (stat.isDirectory()) {
-    for (let name of await fs.readdir(path)) {
-      await removeRecursive(path + _path.sep + name);
-    }
+async function removeRecursive(node) {
+  // It is important that we use the original file tree to do the removal.
+  // This way if a new file has been added to the directory, we get a ENOENT
+  // and we don't accidentally remove more than we expected to.
+  // This doesn't verify that files haven't changed before we remove them,
+  // though.
+  for (let child of node.children) {
+    await removeRecursive(child);
+  }
+  let path = node.path.get();
+  if (node.type === _scanning.FileType.Directory) {
     await (0, _util.printLn)('rmdir ' + path);
     await fs.rmdir(path);
   } else {

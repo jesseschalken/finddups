@@ -22,7 +22,6 @@ class FileReader {
     this.files = [];
   }
 
-  // noinspection JSUnusedGlobalSymbols
   add(file) {
     // `new Promise(cb)` executes `cb` synchronously, so once this method
     // finishes we know the file has been added to `this.files`.
@@ -73,38 +72,29 @@ const PRINT_PROGRESS_DELAY_MS = 10000;
 const MAX_OPEN_FILES = 2000;
 
 async function groupFiles(files) {
-  const groups = groupBySize(files);
+  let groups = groupBySize(files);
 
+  await (0, _util.printLn)('Reading file data of potential duplicates');
+
+  let [todo, done] = (0, _util.partition)(groups, group => group.length > 1);
+  let progress = new _progress.Progress((0, _util.sum)(todo, group => (0, _util.sum)(group, file => file.size)));
   // Small files are much slower to read than big files, so shuffle the list
   // so that they are roughly evenly distributed and our time estimates are
   // more likely to be correct.
-  (0, _util.shuffle)(groups);
-
-  await (0, _util.printLn)('Reading file data of potential duplicates');
-  let progress = new _progress.Progress();
-  let groups2 = [];
-  let todo = [];
-  for (let group of groups) {
-    if (group.length > 1) {
-      progress.total += (0, _util.sum)(group, file => file.size);
-      todo.push(group);
-    } else {
-      groups2.push(group);
-    }
-  }
+  (0, _util.shuffle)(todo);
   await (0, _util.trackProgress)(async () => {
     for (let group of todo) {
       // Open all the files in the group
       let streams = await Promise.all(group.map(file => FileStream.open(file, progress)));
       // Progressively read the files to regroup them
       for (let group of await regroupRecursive(streams)) {
-        groups2.push(group.map(stream => stream.file));
+        done.push(group.map(stream => stream.file));
       }
       // Close all the files
       await (0, _util.waitAll)(streams.map(stream => stream.close()));
     }
   }, () => progress.print(), PRINT_PROGRESS_DELAY_MS);
-  return groups2;
+  return done;
 }
 
 class FileStream {
@@ -146,7 +136,6 @@ class FileStream {
     return buffer;
   }
 
-  // noinspection JSUnusedGlobalSymbols
   async close() {
     if (!this.closed) {
       this.closed = true;
