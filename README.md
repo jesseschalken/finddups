@@ -7,9 +7,10 @@ It considers only the contents of files and directories and the destination
 of symbolic links to determine duplicates. Filesystem metadata such as 
 permissions, ACLs, MAC times and xattrs are ignored.
 
-Files automatically created by file managers and operating systems, such as 
-`.DS_Store`, `Thumbs.db` or `._*` files are *ignored* when determining 
-uniqueness of directories.
+Certain "unimportant" files that are created automatically by operating 
+systems, file managers or text editors are ignored for the purpose of 
+comparing directories, such as `.DS_Store`, `Thumbs.db` or `._*` files. For 
+a complete list see [ignore-rules.js](src/ignore-rules.js).
 
 ### Installation
 
