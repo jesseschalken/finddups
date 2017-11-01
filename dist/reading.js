@@ -15,6 +15,8 @@ var _scanning = require('./scanning');
 
 var _util = require('./util');
 
+var _ignoreRules = require('./ignore-rules');
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 class StringCids {
@@ -38,8 +40,10 @@ const LinkContentCids = new StringCids();
 function dirContent(nodes) {
   let data = '';
   for (let node of nodes) {
-    let { path, cid } = node;
-    data += (0, _util.padString)(cid + '', 20) + ' ' + path.name + '\n';
+    if (!(0, _ignoreRules.isIgnored)(node)) {
+      let { path, cid } = node;
+      data += (0, _util.padString)(cid + '', 20) + ' ' + path.name + '\n';
+    }
   }
   return data;
 }

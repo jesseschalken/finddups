@@ -5,6 +5,7 @@ import {FileReader} from './file-reader';
 import * as fs from './promise_fs';
 import {FileType} from './scanning';
 import {padString, newCid} from './util';
+import {isIgnored} from './ignore-rules';
 
 export interface CompleteNode extends Node {
   +cid: number;
@@ -34,8 +35,10 @@ const LinkContentCids = new StringCids();
 function dirContent(nodes: CompleteNode[]): string {
   let data = '';
   for (let node of nodes) {
-    let {path, cid} = node;
-    data += padString(cid + '', 20) + ' ' + path.name + '\n';
+    if (!isIgnored(node)) {
+      let {path, cid} = node;
+      data += padString(cid + '', 20) + ' ' + path.name + '\n';
+    }
   }
   return data;
 }
